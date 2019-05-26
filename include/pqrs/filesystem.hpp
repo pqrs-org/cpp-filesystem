@@ -21,6 +21,22 @@ inline bool exists(const std::string& path) {
   return (stat(path.c_str(), &s) == 0);
 }
 
+inline std::optional<uid_t> uid(const std::string& path) {
+  struct stat s;
+  if (stat(path.c_str(), &s) == 0) {
+    return s.st_uid;
+  }
+  return std::nullopt;
+}
+
+inline std::optional<gid_t> gid(const std::string& path) {
+  struct stat s;
+  if (stat(path.c_str(), &s) == 0) {
+    return s.st_gid;
+  }
+  return std::nullopt;
+}
+
 inline bool is_directory(const std::string& path) {
   struct stat s;
   if (stat(path.c_str(), &s) == 0) {

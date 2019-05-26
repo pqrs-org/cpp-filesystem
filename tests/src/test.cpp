@@ -22,6 +22,16 @@ TEST_CASE("exists") {
   REQUIRE(pqrs::filesystem::exists("data/directory_symlink") == true);
 }
 
+TEST_CASE("uid") {
+  REQUIRE(pqrs::filesystem::uid("/") == 0);
+  REQUIRE(pqrs::filesystem::uid("data/not_found") == std::nullopt);
+}
+
+TEST_CASE("gid") {
+  REQUIRE(pqrs::filesystem::gid("/") == 0);
+  REQUIRE(pqrs::filesystem::gid("data/not_found") == std::nullopt);
+}
+
 TEST_CASE("is_directory") {
   REQUIRE(pqrs::filesystem::is_directory("/") == true);
   REQUIRE(pqrs::filesystem::is_directory(".") == true);
