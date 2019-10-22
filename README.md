@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/pqrs-org/cpp-filesystem.svg?branch=master)](https://travis-ci.com/pqrs-org/cpp-filesystem)
+[![Build Status](https://github.com/pqrs-org/cpp-filesystem/workflows/CI/badge.svg)](https://github.com/pqrs-org/cpp-filesystem/actions)
 [![License](https://img.shields.io/badge/license-Boost%20Software%20License-blue.svg)](https://github.com/pqrs-org/cpp-filesystem/blob/master/LICENSE.md)
 
 # cpp-filesystem
