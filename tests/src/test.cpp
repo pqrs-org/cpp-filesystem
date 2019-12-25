@@ -28,7 +28,7 @@ TEST_CASE("uid") {
 }
 
 TEST_CASE("gid") {
-  REQUIRE(pqrs::filesystem::gid("/") == 0);
+  REQUIRE(pqrs::filesystem::gid("/bin/ls") == 0);
   REQUIRE(pqrs::filesystem::gid("data/not_found") == std::nullopt);
 }
 
