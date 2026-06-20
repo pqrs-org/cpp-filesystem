@@ -1,8 +1,10 @@
 #include <boost/ut.hpp>
 #include <fstream>
+#include <optional>
 #include <ostream>
 #include <pqrs/filesystem.hpp>
 #include <sstream>
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace {
@@ -14,6 +16,14 @@ std::string read_file(const std::string& path) {
   std::stringstream buffer;
   buffer << stream.rdbuf();
   return buffer.str();
+}
+
+std::optional<uid_t> symlink_uid(const std::string& path) {
+  struct stat s;
+  if (lstat(path.c_str(), &s) == 0) {
+    return s.st_uid;
+  }
+  return std::nullopt;
 }
 
 class scoped_current_directory final {
@@ -65,14 +75,22 @@ int main() {
   "uid"_test = [] {
     // Return owner uid for an existing path and nullopt for a missing path.
     expect(pqrs::filesystem::uid("/") == 0);
-    expect(pqrs::filesystem::uid("data/file") == getuid());
+
+    std::ofstream("data/owned_file.tmp").close();
+    expect(pqrs::filesystem::uid("data/owned_file.tmp") == getuid());
+    unlink("data/owned_file.tmp");
+
     expect(pqrs::filesystem::uid("data/not_found") == std::nullopt);
   };
 
   "gid"_test = [] {
     // Return group id for an existing path and nullopt for a missing path.
     expect(pqrs::filesystem::gid("/bin/ls") == 0);
-    expect(pqrs::filesystem::gid("data/file") == getgid());
+
+    std::ofstream("data/owned_file.tmp").close();
+    expect(pqrs::filesystem::gid("data/owned_file.tmp") == getgid());
+    unlink("data/owned_file.tmp");
+
     expect(pqrs::filesystem::gid("data/not_found") == std::nullopt);
   };
 
@@ -94,7 +112,9 @@ int main() {
     expect(!pqrs::filesystem::is_owned("/bin/ls", getuid()));
     expect(pqrs::filesystem::is_owned("data/file", getuid()));
     expect(!pqrs::filesystem::is_owned("data/not_found", getuid()));
-    // Follow symlink
+    // Follow symlink.
+    // The link target is /bin/ls, while the symlink itself is owned by the current user.
+    expect(symlink_uid("data/bin-ls-symlink") == getuid());
     expect(pqrs::filesystem::is_owned("data/bin-ls-symlink", 0));
   };
 
@@ -113,14 +133,17 @@ int main() {
 
   "realpath"_test = [] {
     // Resolve existing absolute paths and return nullopt for paths that cannot be resolved.
-    auto actual = pqrs::filesystem::realpath("/bin/ls");
-    expect(*actual == "/bin/ls");
+    auto current_directory = pqrs::filesystem::realpath(".");
+    expect((current_directory != std::nullopt) >> fatal);
+
+    auto actual = pqrs::filesystem::realpath("data/file");
+    expect(*actual == *current_directory + "/data/file");
 
     actual = pqrs::filesystem::realpath("/var/log/not_found");
     expect(actual == std::nullopt);
 
-    actual = pqrs::filesystem::realpath("/etc/hosts");
-    expect(*actual == "/private/etc/hosts");
+    actual = pqrs::filesystem::realpath("data/symlink");
+    expect(*actual == *current_directory + "/data/file");
   };
 
   "file_access_permissions"_test = [] {

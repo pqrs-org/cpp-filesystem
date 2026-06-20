@@ -103,9 +103,7 @@ inline bool create_directory_with_intermediate_directories(const std::string& pa
     return false;
   }
 
-  chmod(path.c_str(), mode);
-
-  return true;
+  return (chmod(path.c_str(), mode) == 0);
 }
 
 inline void copy(const std::string& from_file_path,
