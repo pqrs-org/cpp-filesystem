@@ -1,13 +1,22 @@
 #include <boost/ut.hpp>
+#include <fstream>
 #include <ostream>
 #include <pqrs/filesystem.hpp>
+#include <sstream>
 
 namespace {
 // file size of `data/file`.
-off_t data_file_size = 2230;
+constexpr off_t data_file_size = 2230;
+
+std::string read_file(const std::string& path) {
+  std::ifstream stream(path);
+  std::stringstream buffer;
+  buffer << stream.rdbuf();
+  return buffer.str();
+}
 } // namespace
 
-int main(void) {
+int main() {
   using namespace boost::ut;
   using namespace boost::ut::literals;
 
@@ -117,6 +126,7 @@ int main(void) {
     expect(*(pqrs::filesystem::file_access_permissions("mkdir_example/a/b/c/d/e")) == 0755);
 
     expect(pqrs::filesystem::create_directory_with_intermediate_directories("data/file", 0700) == false);
+    expect(pqrs::filesystem::create_directory_with_intermediate_directories("data/file/a", 0700) == false);
     expect(pqrs::filesystem::create_directory_with_intermediate_directories("data/symlink", 0700) == false);
     expect(pqrs::filesystem::create_directory_with_intermediate_directories("data/directory", 0700) == true);
     expect(pqrs::filesystem::create_directory_with_intermediate_directories("data/directory_symlink", 0700) == true);
@@ -127,7 +137,11 @@ int main(void) {
     expect(pqrs::filesystem::file_size("data/file.tmp") == std::nullopt);
     pqrs::filesystem::copy("data/file", "data/file.tmp");
     expect(pqrs::filesystem::file_size("data/file.tmp") == data_file_size);
+    expect(read_file("data/file.tmp") == read_file("data/file"));
     unlink("data/file.tmp");
+
+    pqrs::filesystem::copy("data/not_found", "data/file.tmp");
+    expect(pqrs::filesystem::file_size("data/file.tmp") == std::nullopt);
   };
 
   return 0;

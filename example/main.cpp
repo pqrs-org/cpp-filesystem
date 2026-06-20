@@ -1,7 +1,7 @@
 #include <iostream>
 #include <pqrs/filesystem.hpp>
 
-int main(void) {
+int main() {
   {
     std::string path("/usr/bin/yes");
     std::cout << "dirname(" << path << ") = "
