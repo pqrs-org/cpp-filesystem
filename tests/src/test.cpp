@@ -57,5 +57,13 @@ int main() {
     expect(pqrs::filesystem::is_owned("data/bin-ls-symlink", 0));
   };
 
+  "is_symlink_owned"_test = [] {
+    // Compare symlink owner without following the symlink.
+    expect(pqrs::filesystem::is_symlink_owned("data/file", getuid()));
+    expect(!pqrs::filesystem::is_symlink_owned("data/not_found", getuid()));
+    expect(pqrs::filesystem::is_symlink_owned("data/bin-ls-symlink", getuid()));
+    expect(!pqrs::filesystem::is_symlink_owned("data/bin-ls-symlink", 0));
+  };
+
   return 0;
 }

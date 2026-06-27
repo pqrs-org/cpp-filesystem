@@ -45,11 +45,11 @@ namespace pqrs::filesystem {
 }
 
 [[nodiscard]] inline bool is_owned(const std::string& path, uid_t uid) noexcept {
-  struct stat s;
-  if (stat(path.c_str(), &s) == 0) {
-    return s.st_uid == uid;
-  }
-  return false;
+  return pqrs::filesystem::uid(path) == uid;
+}
+
+[[nodiscard]] inline bool is_symlink_owned(const std::string& path, uid_t uid) noexcept {
+  return pqrs::filesystem::symlink_uid(path) == uid;
 }
 
 } // namespace pqrs::filesystem
