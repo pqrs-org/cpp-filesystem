@@ -18,14 +18,6 @@ std::string read_file(const std::string& path) {
   return buffer.str();
 }
 
-std::optional<uid_t> symlink_uid(const std::string& path) {
-  struct stat s;
-  if (lstat(path.c_str(), &s) == 0) {
-    return s.st_uid;
-  }
-  return std::nullopt;
-}
-
 class scoped_current_directory final {
 public:
   // Keep tests that use "." scoped to a disposable directory.
@@ -83,6 +75,13 @@ int main() {
     expect(pqrs::filesystem::uid("data/not_found") == std::nullopt);
   };
 
+  "symlink_uid"_test = [] {
+    // Return symlink owner uid without following the symlink.
+    expect(pqrs::filesystem::symlink_uid("data/bin-ls-symlink") == getuid());
+    expect(pqrs::filesystem::uid("data/bin-ls-symlink") == 0);
+    expect(pqrs::filesystem::symlink_uid("data/not_found") == std::nullopt);
+  };
+
   "gid"_test = [] {
     // Return group id for an existing path and nullopt for a missing path.
     expect(pqrs::filesystem::gid("/bin/ls") == 0);
@@ -92,6 +91,13 @@ int main() {
     unlink("data/owned_file.tmp");
 
     expect(pqrs::filesystem::gid("data/not_found") == std::nullopt);
+  };
+
+  "symlink_gid"_test = [] {
+    // Return symlink group id without following the symlink.
+    expect(pqrs::filesystem::symlink_gid("data/bin-ls-symlink") == getgid());
+    expect(pqrs::filesystem::gid("data/bin-ls-symlink") == 0);
+    expect(pqrs::filesystem::symlink_gid("data/not_found") == std::nullopt);
   };
 
   "is_directory"_test = [] {
@@ -114,7 +120,7 @@ int main() {
     expect(!pqrs::filesystem::is_owned("data/not_found", getuid()));
     // Follow symlink.
     // The link target is /bin/ls, while the symlink itself is owned by the current user.
-    expect(symlink_uid("data/bin-ls-symlink") == getuid());
+    expect(pqrs::filesystem::symlink_uid("data/bin-ls-symlink") == getuid());
     expect(pqrs::filesystem::is_owned("data/bin-ls-symlink", 0));
   };
 

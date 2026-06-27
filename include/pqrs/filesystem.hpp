@@ -29,9 +29,25 @@ namespace pqrs::filesystem {
   return std::nullopt;
 }
 
+[[nodiscard]] inline std::optional<uid_t> symlink_uid(const std::string& path) noexcept {
+  struct stat s;
+  if (lstat(path.c_str(), &s) == 0) {
+    return s.st_uid;
+  }
+  return std::nullopt;
+}
+
 [[nodiscard]] inline std::optional<gid_t> gid(const std::string& path) noexcept {
   struct stat s;
   if (stat(path.c_str(), &s) == 0) {
+    return s.st_gid;
+  }
+  return std::nullopt;
+}
+
+[[nodiscard]] inline std::optional<gid_t> symlink_gid(const std::string& path) noexcept {
+  struct stat s;
+  if (lstat(path.c_str(), &s) == 0) {
     return s.st_gid;
   }
   return std::nullopt;
