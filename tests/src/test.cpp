@@ -1,4 +1,5 @@
 #include <boost/ut.hpp>
+#include <filesystem>
 #include <fstream>
 #include <optional>
 #include <ostream>
@@ -54,16 +55,6 @@ int main() {
     system("rm -rf mkdir_example");
   };
 
-  "exists"_test = [] {
-    // Check existing, missing, and symlink paths for both files and directories.
-    expect(pqrs::filesystem::exists("data/file") == true);
-    expect(pqrs::filesystem::exists("data/symlink") == true);
-    expect(pqrs::filesystem::exists("data/not_found") == false);
-    expect(pqrs::filesystem::exists("data/not_found_symlink") == false);
-    expect(pqrs::filesystem::exists("data/directory") == true);
-    expect(pqrs::filesystem::exists("data/directory_symlink") == true);
-  };
-
   "uid"_test = [] {
     // Return owner uid for an existing path and nullopt for a missing path.
     expect(pqrs::filesystem::uid("/") == 0);
@@ -98,19 +89,6 @@ int main() {
     expect(pqrs::filesystem::symlink_gid("data/bin-ls-symlink") == getgid());
     expect(pqrs::filesystem::gid("data/bin-ls-symlink") == 0);
     expect(pqrs::filesystem::symlink_gid("data/not_found") == std::nullopt);
-  };
-
-  "is_directory"_test = [] {
-    // Classify directories after following symlinks, while files and missing paths are false.
-    expect(pqrs::filesystem::is_directory("/") == true);
-    expect(pqrs::filesystem::is_directory(".") == true);
-    expect(pqrs::filesystem::is_directory("..") == true);
-    expect(pqrs::filesystem::is_directory("data/file") == false);
-    expect(pqrs::filesystem::is_directory("data/symlink") == false);
-    expect(pqrs::filesystem::is_directory("data/not_found") == false);
-    expect(pqrs::filesystem::is_directory("data/not_found_symlink") == false);
-    expect(pqrs::filesystem::is_directory("data/directory") == true);
-    expect(pqrs::filesystem::is_directory("data/directory_symlink") == true);
   };
 
   "is_owned"_test = [] {
@@ -159,14 +137,6 @@ int main() {
     expect(pqrs::filesystem::file_access_permissions("data/file") == 0644);
     // Follow symlink
     expect(pqrs::filesystem::file_access_permissions("data/symlink") == 0644);
-  };
-
-  "file_size"_test = [] {
-    // Report target file sizes, following symlinks, and nullopt for missing paths.
-    expect(pqrs::filesystem::file_size("data/not_found") == std::nullopt);
-    expect(pqrs::filesystem::file_size("data/file") == data_file_size);
-    // Follow symlink
-    expect(pqrs::filesystem::file_size("data/symlink") == data_file_size);
   };
 
   "create_directory_with_intermediate_directories"_test = [] {
@@ -218,15 +188,15 @@ int main() {
   "copy"_test = [] {
     // Copy preserves file contents and size.
     unlink("data/file.tmp");
-    expect(pqrs::filesystem::file_size("data/file.tmp") == std::nullopt);
+    expect(std::filesystem::exists("data/file.tmp") == false);
     pqrs::filesystem::copy("data/file", "data/file.tmp");
-    expect(pqrs::filesystem::file_size("data/file.tmp") == data_file_size);
+    expect(std::filesystem::file_size("data/file.tmp") == data_file_size);
     expect(read_file("data/file.tmp") == read_file("data/file"));
     unlink("data/file.tmp");
 
     // Missing sources are ignored and do not create the destination.
     pqrs::filesystem::copy("data/not_found", "data/file.tmp");
-    expect(pqrs::filesystem::file_size("data/file.tmp") == std::nullopt);
+    expect(std::filesystem::exists("data/file.tmp") == false);
   };
 
   return 0;

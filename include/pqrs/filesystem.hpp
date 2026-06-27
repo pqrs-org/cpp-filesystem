@@ -9,17 +9,13 @@
 #include "filesystem/impl.hpp"
 #include <array>
 #include <climits>
+#include <filesystem>
 #include <fstream>
 #include <optional>
 #include <sys/stat.h>
 #include <vector>
 
 namespace pqrs::filesystem {
-
-[[nodiscard]] inline bool exists(const std::string& path) noexcept {
-  struct stat s;
-  return (stat(path.c_str(), &s) == 0);
-}
 
 [[nodiscard]] inline std::optional<uid_t> uid(const std::string& path) noexcept {
   struct stat s;
@@ -51,14 +47,6 @@ namespace pqrs::filesystem {
     return s.st_gid;
   }
   return std::nullopt;
-}
-
-[[nodiscard]] inline bool is_directory(const std::string& path) noexcept {
-  struct stat s;
-  if (stat(path.c_str(), &s) == 0) {
-    return S_ISDIR(s.st_mode);
-  }
-  return false;
 }
 
 [[nodiscard]] inline bool is_owned(const std::string& path, uid_t uid) noexcept {
@@ -93,18 +81,10 @@ namespace pqrs::filesystem {
   return s.st_mode & ACCESSPERMS;
 }
 
-[[nodiscard]] inline std::optional<off_t> file_size(const std::string& path) noexcept {
-  struct stat s;
-  if (stat(path.c_str(), &s) != 0) {
-    return std::nullopt;
-  }
-  return s.st_size;
-}
-
 inline bool create_directory_with_intermediate_directories(const std::string& path, mode_t mode) {
   std::vector<std::string> parents;
   auto directory = path;
-  while (!exists(directory)) {
+  while (!std::filesystem::exists(directory)) {
     parents.push_back(directory);
     directory = dirname(directory);
   }
@@ -115,7 +95,7 @@ inline bool create_directory_with_intermediate_directories(const std::string& pa
     }
   }
 
-  if (!is_directory(path)) {
+  if (!std::filesystem::is_directory(path)) {
     return false;
   }
 
