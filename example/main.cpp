@@ -2,12 +2,6 @@
 #include <pqrs/filesystem.hpp>
 
 int main() {
-  {
-    std::string path("/usr/bin/yes");
-    std::cout << "dirname(" << path << ") = "
-              << pqrs::filesystem::dirname(path) << std::endl;
-  }
-
   if (auto uid = pqrs::filesystem::uid(".")) {
     std::cout << "uid of pwd: " << *uid << std::endl;
   }

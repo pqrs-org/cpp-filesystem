@@ -6,11 +6,9 @@
 // Distributed under the Boost Software License, Version 1.0.
 // (See https://www.boost.org/LICENSE_1_0.txt)
 
-#include "filesystem/impl.hpp"
-#include <array>
-#include <climits>
 #include <fstream>
 #include <optional>
+#include <string>
 #include <sys/stat.h>
 
 namespace pqrs::filesystem {
@@ -53,22 +51,6 @@ namespace pqrs::filesystem {
     return s.st_uid == uid;
   }
   return false;
-}
-
-[[nodiscard]] inline std::string dirname(const std::string& path) {
-  size_t pos = impl::get_dirname_position(path);
-  if (pos == 0) {
-    return ".";
-  }
-  return path.substr(0, pos);
-}
-
-[[nodiscard]] inline std::optional<std::string> realpath(const std::string& path) {
-  std::array<char, PATH_MAX> resolved_path;
-  if (!::realpath(path.c_str(), resolved_path.data())) {
-    return std::nullopt;
-  }
-  return std::string(resolved_path.data());
 }
 
 [[nodiscard]] inline std::optional<mode_t> file_access_permissions(const std::string& path) noexcept {

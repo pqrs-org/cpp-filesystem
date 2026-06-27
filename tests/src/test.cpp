@@ -72,34 +72,6 @@ int main() {
     expect(pqrs::filesystem::is_owned("data/bin-ls-symlink", 0));
   };
 
-  "dirname"_test = [] {
-    // Match dirname-like behavior for trailing slashes, root, bare names, and empty paths.
-    expect(pqrs::filesystem::dirname("data/directory/file") == "data/directory");
-    expect(pqrs::filesystem::dirname("data/directory/file/") == "data/directory");
-    expect(pqrs::filesystem::dirname("data/not_found_directory/file") == "data/not_found_directory");
-    expect(pqrs::filesystem::dirname("data/not_found_directory/file/") == "data/not_found_directory");
-    expect(pqrs::filesystem::dirname("/usr") == "/");
-    expect(pqrs::filesystem::dirname("/") == "/");
-    expect(pqrs::filesystem::dirname("data") == ".");
-    expect(pqrs::filesystem::dirname("data/") == ".");
-    expect(pqrs::filesystem::dirname("") == ".");
-  };
-
-  "realpath"_test = [] {
-    // Resolve existing absolute paths and return nullopt for paths that cannot be resolved.
-    auto current_directory = pqrs::filesystem::realpath(".");
-    expect((current_directory != std::nullopt) >> fatal);
-
-    auto actual = pqrs::filesystem::realpath("data/file");
-    expect(*actual == *current_directory + "/data/file");
-
-    actual = pqrs::filesystem::realpath("/var/log/not_found");
-    expect(actual == std::nullopt);
-
-    actual = pqrs::filesystem::realpath("data/symlink");
-    expect(*actual == *current_directory + "/data/file");
-  };
-
   "file_access_permissions"_test = [] {
     // Report permission bits for existing targets, following symlinks, and nullopt for missing paths.
     expect(pqrs::filesystem::file_access_permissions("data/not_found") == std::nullopt);
