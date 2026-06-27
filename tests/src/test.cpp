@@ -19,41 +19,11 @@ std::string read_file(const std::string& path) {
   return buffer.str();
 }
 
-class scoped_current_directory final {
-public:
-  // Keep tests that use "." scoped to a disposable directory.
-  explicit scoped_current_directory(const std::string& path) {
-    if (auto current_directory = pqrs::filesystem::realpath(".")) {
-      current_directory_ = *current_directory;
-    }
-
-    changed_ = (chdir(path.c_str()) == 0);
-  }
-
-  ~scoped_current_directory() {
-    if (!current_directory_.empty()) {
-      chdir(current_directory_.c_str());
-    }
-  }
-
-  [[nodiscard]] bool changed() const noexcept {
-    return changed_;
-  }
-
-private:
-  std::string current_directory_;
-  bool changed_ = false;
-};
 } // namespace
 
 int main() {
   using namespace boost::ut;
   using namespace boost::ut::literals;
-
-  "initialize"_test = [] {
-    // Ensure directory creation tests start from a clean fixture.
-    system("rm -rf mkdir_example");
-  };
 
   "uid"_test = [] {
     // Return owner uid for an existing path and nullopt for a missing path.
@@ -139,63 +109,19 @@ int main() {
     expect(pqrs::filesystem::file_access_permissions("data/symlink") == 0644);
   };
 
-  "create_directory_with_intermediate_directories"_test = [] {
-    // Existing directories are accepted without touching paths outside the disposable fixture.
-    expect(pqrs::filesystem::create_directory_with_intermediate_directories("mkdir_example", 0755) == true);
-
-    {
-      // "." is supported when it points at an existing directory.
-      scoped_current_directory current_directory("mkdir_example");
-      expect(current_directory.changed() >> fatal);
-      expect(pqrs::filesystem::create_directory_with_intermediate_directories(".", 0755) == true);
-    }
-
-    // Absolute paths are supported for existing directories.
-    auto absolute_path = pqrs::filesystem::realpath("mkdir_example");
-    expect((absolute_path != std::nullopt) >> fatal);
-    expect(pqrs::filesystem::create_directory_with_intermediate_directories(*absolute_path, 0755) == true);
-
-    // Missing intermediate directories are created with the mode from that creation call.
-    expect(pqrs::filesystem::create_directory_with_intermediate_directories("mkdir_example/a/b", 0755) == true);
-    expect(pqrs::filesystem::create_directory_with_intermediate_directories("mkdir_example/a/b/c/d", 0750) == true);
-    expect(pqrs::filesystem::create_directory_with_intermediate_directories("mkdir_example/a/b/c/d/e", 0700) == true);
-
-    expect(*(pqrs::filesystem::file_access_permissions("mkdir_example")) == 0755);
-    expect(*(pqrs::filesystem::file_access_permissions("mkdir_example/a")) == 0755);
-    expect(*(pqrs::filesystem::file_access_permissions("mkdir_example/a/b")) == 0755);
-    expect(*(pqrs::filesystem::file_access_permissions("mkdir_example/a/b/c")) == 0750);
-    expect(*(pqrs::filesystem::file_access_permissions("mkdir_example/a/b/c/d")) == 0750);
-    expect(*(pqrs::filesystem::file_access_permissions("mkdir_example/a/b/c/d/e")) == 0700);
-
-    // Reusing an existing final directory updates only that final directory's mode.
-    expect(pqrs::filesystem::create_directory_with_intermediate_directories("mkdir_example/a/b/c/d/e", 0755) == true);
-
-    expect(*(pqrs::filesystem::file_access_permissions("mkdir_example")) == 0755);
-    expect(*(pqrs::filesystem::file_access_permissions("mkdir_example/a")) == 0755);
-    expect(*(pqrs::filesystem::file_access_permissions("mkdir_example/a/b")) == 0755);
-    expect(*(pqrs::filesystem::file_access_permissions("mkdir_example/a/b/c")) == 0750);
-    expect(*(pqrs::filesystem::file_access_permissions("mkdir_example/a/b/c/d")) == 0750);
-    expect(*(pqrs::filesystem::file_access_permissions("mkdir_example/a/b/c/d/e")) == 0755);
-
-    // Non-directory targets fail, while existing directory targets and directory symlinks succeed.
-    expect(pqrs::filesystem::create_directory_with_intermediate_directories("data/file", 0700) == false);
-    expect(pqrs::filesystem::create_directory_with_intermediate_directories("data/file/a", 0700) == false);
-    expect(pqrs::filesystem::create_directory_with_intermediate_directories("data/symlink", 0700) == false);
-    expect(pqrs::filesystem::create_directory_with_intermediate_directories("data/directory", 0700) == true);
-    expect(pqrs::filesystem::create_directory_with_intermediate_directories("data/directory_symlink", 0700) == true);
-  };
-
   "copy"_test = [] {
     // Copy preserves file contents and size.
     unlink("data/file.tmp");
     expect(std::filesystem::exists("data/file.tmp") == false);
-    pqrs::filesystem::copy("data/file", "data/file.tmp");
+    pqrs::filesystem::copy("data/file",
+                           "data/file.tmp");
     expect(std::filesystem::file_size("data/file.tmp") == data_file_size);
     expect(read_file("data/file.tmp") == read_file("data/file"));
     unlink("data/file.tmp");
 
     // Missing sources are ignored and do not create the destination.
-    pqrs::filesystem::copy("data/not_found", "data/file.tmp");
+    pqrs::filesystem::copy("data/not_found",
+                           "data/file.tmp");
     expect(std::filesystem::exists("data/file.tmp") == false);
   };
 

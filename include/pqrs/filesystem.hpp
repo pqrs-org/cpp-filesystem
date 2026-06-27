@@ -9,11 +9,9 @@
 #include "filesystem/impl.hpp"
 #include <array>
 #include <climits>
-#include <filesystem>
 #include <fstream>
 #include <optional>
 #include <sys/stat.h>
-#include <vector>
 
 namespace pqrs::filesystem {
 
@@ -79,27 +77,6 @@ namespace pqrs::filesystem {
     return std::nullopt;
   }
   return s.st_mode & ACCESSPERMS;
-}
-
-inline bool create_directory_with_intermediate_directories(const std::string& path, mode_t mode) {
-  std::vector<std::string> parents;
-  auto directory = path;
-  while (!std::filesystem::exists(directory)) {
-    parents.push_back(directory);
-    directory = dirname(directory);
-  }
-
-  for (auto it = std::rbegin(parents); it != std::rend(parents); std::advance(it, 1)) {
-    if (mkdir(it->c_str(), mode) != 0) {
-      return false;
-    }
-  }
-
-  if (!std::filesystem::is_directory(path)) {
-    return false;
-  }
-
-  return (chmod(path.c_str(), mode) == 0);
 }
 
 inline void copy(const std::string& from_file_path,
