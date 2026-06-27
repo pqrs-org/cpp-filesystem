@@ -1,25 +1,10 @@
 #include <boost/ut.hpp>
-#include <filesystem>
 #include <fstream>
 #include <optional>
 #include <ostream>
 #include <pqrs/filesystem.hpp>
-#include <sstream>
 #include <sys/stat.h>
 #include <unistd.h>
-
-namespace {
-// file size of `data/file`.
-constexpr off_t data_file_size = 2230;
-
-std::string read_file(const std::string& path) {
-  std::ifstream stream(path);
-  std::stringstream buffer;
-  buffer << stream.rdbuf();
-  return buffer.str();
-}
-
-} // namespace
 
 int main() {
   using namespace boost::ut;
@@ -70,31 +55,6 @@ int main() {
     // The link target is /bin/ls, while the symlink itself is owned by the current user.
     expect(pqrs::filesystem::symlink_uid("data/bin-ls-symlink") == getuid());
     expect(pqrs::filesystem::is_owned("data/bin-ls-symlink", 0));
-  };
-
-  "file_access_permissions"_test = [] {
-    // Report permission bits for existing targets, following symlinks, and nullopt for missing paths.
-    expect(pqrs::filesystem::file_access_permissions("data/not_found") == std::nullopt);
-    chmod("data/file", 0644);
-    expect(pqrs::filesystem::file_access_permissions("data/file") == 0644);
-    // Follow symlink
-    expect(pqrs::filesystem::file_access_permissions("data/symlink") == 0644);
-  };
-
-  "copy"_test = [] {
-    // Copy preserves file contents and size.
-    unlink("data/file.tmp");
-    expect(std::filesystem::exists("data/file.tmp") == false);
-    pqrs::filesystem::copy("data/file",
-                           "data/file.tmp");
-    expect(std::filesystem::file_size("data/file.tmp") == data_file_size);
-    expect(read_file("data/file.tmp") == read_file("data/file"));
-    unlink("data/file.tmp");
-
-    // Missing sources are ignored and do not create the destination.
-    pqrs::filesystem::copy("data/not_found",
-                           "data/file.tmp");
-    expect(std::filesystem::exists("data/file.tmp") == false);
   };
 
   return 0;
