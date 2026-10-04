@@ -11,4 +11,5 @@ file(MAKE_DIRECTORY "${VENDOR_INCLUDE_DIR}")
 include("${CMAKE_CURRENT_LIST_DIR}/cpm-cmake-package-lock/cmake/common.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/cpm-cmake-package-lock/cmake/dependency.cmake")
 
+copy_vendor_package(pqrs_gsl)
 copy_vendor_package(ut)
