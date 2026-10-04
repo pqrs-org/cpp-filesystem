@@ -5,6 +5,12 @@
 
 Utilities of filesystem.
 
+## Requirements
+
+cpp-filesystem depends the following classes.
+
+- [pqrs::gsl](https://github.com/pqrs-org/cpp-gsl)
+
 ## Install
 
 Copy `include/pqrs` and `vendor/vendor/include` directories into your include directory.

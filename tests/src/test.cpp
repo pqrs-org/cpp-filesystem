@@ -117,14 +117,22 @@ int main() {
     auto result = pqrs::filesystem::read_file(directory.file("binary"));
     expect(result.has_value());
     if (result) {
-      expect(*result == contents);
+      expect(**result == contents);
+      auto shared_contents = *result;
+      expect(pqrs::unwrap_not_null(shared_contents).get() ==
+             pqrs::unwrap_not_null(*result).get());
+      result = std::unexpected(pqrs::filesystem::read_file_error{
+          pqrs::filesystem::read_file_error::reason::read_failed,
+          {},
+      });
+      expect(*shared_contents == contents);
     }
 
     directory.write("empty", {});
     auto empty = pqrs::filesystem::read_file(directory.file("empty"));
     expect(empty.has_value());
     if (empty) {
-      expect(empty->empty());
+      expect((*empty)->empty());
     }
   };
 
@@ -135,18 +143,18 @@ int main() {
     directory.write("file", contents);
 
     auto other_uid = getuid() == 0 ? uid_t{1} : uid_t{0};
-    pqrs::filesystem::read_file_options options {
-      .allowed_owners = std::vector<uid_t>{
-          other_uid,
-          getuid(),
-      },
+    pqrs::filesystem::read_file_options options{
+        .allowed_owners = std::vector<uid_t>{
+            other_uid,
+            getuid(),
+        },
     };
 
     auto allowed = pqrs::filesystem::read_file(directory.file("file"),
                                                options);
     expect(allowed.has_value());
     if (allowed) {
-      expect(*allowed == contents);
+      expect(**allowed == contents);
     }
 
     for (const auto& owners : {
@@ -181,7 +189,7 @@ int main() {
                                                 options);
       expect(result.has_value());
       if (result) {
-        expect(*result == contents);
+        expect(**result == contents);
       }
     }
 
@@ -205,7 +213,7 @@ int main() {
     auto empty = pqrs::filesystem::read_file(directory.file("empty"), options);
     expect(empty.has_value());
     if (empty) {
-      expect(empty->empty());
+      expect((*empty)->empty());
     }
   };
 
@@ -248,15 +256,15 @@ int main() {
 
     expect(::symlink("target", directory.file("link").c_str()) == 0);
 
-    pqrs::filesystem::read_file_options options {
-      .allowed_owners = std::vector<uid_t>{getuid()},
+    pqrs::filesystem::read_file_options options{
+        .allowed_owners = std::vector<uid_t>{getuid()},
     };
 
     auto result = pqrs::filesystem::read_file(directory.file("link"),
                                               options);
     expect(result.has_value());
     if (result) {
-      expect(*result == contents);
+      expect(**result == contents);
     }
   };
 
