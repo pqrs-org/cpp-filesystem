@@ -26,7 +26,7 @@
 
 namespace pqrs::filesystem {
 
-[[nodiscard]] inline std::optional<uid_t> uid(const std::string& path) noexcept {
+[[nodiscard]] inline std::optional<uid_t> uid(const std::filesystem::path& path) noexcept {
   struct stat s;
   if (stat(path.c_str(), &s) == 0) {
     return s.st_uid;
@@ -34,7 +34,7 @@ namespace pqrs::filesystem {
   return std::nullopt;
 }
 
-[[nodiscard]] inline std::optional<uid_t> symlink_uid(const std::string& path) noexcept {
+[[nodiscard]] inline std::optional<uid_t> symlink_uid(const std::filesystem::path& path) noexcept {
   struct stat s;
   if (lstat(path.c_str(), &s) == 0) {
     return s.st_uid;
@@ -42,7 +42,7 @@ namespace pqrs::filesystem {
   return std::nullopt;
 }
 
-[[nodiscard]] inline std::optional<gid_t> gid(const std::string& path) noexcept {
+[[nodiscard]] inline std::optional<gid_t> gid(const std::filesystem::path& path) noexcept {
   struct stat s;
   if (stat(path.c_str(), &s) == 0) {
     return s.st_gid;
@@ -50,7 +50,7 @@ namespace pqrs::filesystem {
   return std::nullopt;
 }
 
-[[nodiscard]] inline std::optional<gid_t> symlink_gid(const std::string& path) noexcept {
+[[nodiscard]] inline std::optional<gid_t> symlink_gid(const std::filesystem::path& path) noexcept {
   struct stat s;
   if (lstat(path.c_str(), &s) == 0) {
     return s.st_gid;
@@ -58,11 +58,13 @@ namespace pqrs::filesystem {
   return std::nullopt;
 }
 
-[[nodiscard]] inline bool is_owned(const std::string& path, uid_t uid) noexcept {
+[[nodiscard]] inline bool is_owned(const std::filesystem::path& path,
+                                   uid_t uid) noexcept {
   return pqrs::filesystem::uid(path) == uid;
 }
 
-[[nodiscard]] inline bool is_symlink_owned(const std::string& path, uid_t uid) noexcept {
+[[nodiscard]] inline bool is_symlink_owned(const std::filesystem::path& path,
+                                           uid_t uid) noexcept {
   return pqrs::filesystem::symlink_uid(path) == uid;
 }
 
@@ -113,7 +115,7 @@ struct read_file_error final {
 // O_NONBLOCK avoids waiting for a FIFO writer; it does not make disk I/O asynchronous.
 // A size limit is checked both before allocation and while reading to EOF.
 [[nodiscard]] inline std::expected<not_null_shared_ptr_t<std::vector<uint8_t>>, read_file_error> read_file(
-    const std::string& path,
+    const std::filesystem::path& path,
     const read_file_options& options = {}) {
   struct file_descriptor final {
     int value;
