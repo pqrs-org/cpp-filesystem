@@ -268,5 +268,83 @@ int main() {
     }
   };
 
+  "write_file_atomically"_test = [] {
+    temporary_directory directory;
+    auto path = directory.file("file");
+
+    const std::vector<uint8_t> binary_contents{0, 128, 255};
+    auto result = pqrs::filesystem::write_file_atomically(
+        pqrs::filesystem::write_file_options{
+            .path = path,
+            .contents = std::string_view(
+                reinterpret_cast<const char*>(binary_contents.data()),
+                binary_contents.size()),
+            .permissions = 0600,
+        });
+    expect(result.has_value());
+
+    auto contents = pqrs::filesystem::read_file(path);
+    expect(contents.has_value());
+    if (contents) {
+      expect(**contents == binary_contents);
+    }
+
+    struct stat status{};
+    expect(::stat(path.c_str(),
+                  &status) == 0);
+    expect((status.st_mode & 0777) == 0600);
+
+    result = pqrs::filesystem::write_file_atomically({
+        .path = path,
+        .contents = "replacement",
+    });
+    expect(result.has_value());
+
+    contents = pqrs::filesystem::read_file(path);
+    expect(contents.has_value());
+    if (contents) {
+      expect(std::string((*contents)->begin(),
+                         (*contents)->end()) == "replacement");
+    }
+
+    directory.write("target", {'t', 'a', 'r', 'g', 'e', 't'});
+    auto symlink_path = directory.file("symlink");
+    expect(::symlink("target", symlink_path.c_str()) == 0);
+
+    result = pqrs::filesystem::write_file_atomically({
+        .path = symlink_path,
+        .contents = "new",
+    });
+    expect(result.has_value());
+    expect(!std::filesystem::is_symlink(symlink_path));
+
+    auto target_contents = pqrs::filesystem::read_file(directory.file("target"));
+    expect(target_contents.has_value());
+    if (target_contents) {
+      expect(std::string((*target_contents)->begin(),
+                         (*target_contents)->end()) == "target");
+    }
+
+    auto symlink_replacement_contents = pqrs::filesystem::read_file(symlink_path);
+    expect(symlink_replacement_contents.has_value());
+    if (symlink_replacement_contents) {
+      expect(std::string((*symlink_replacement_contents)->begin(),
+                         (*symlink_replacement_contents)->end()) == "new");
+    }
+
+    auto missing_parent = pqrs::filesystem::write_file_atomically(
+        {
+            .path = directory.file("missing/file"),
+            .contents = "contents",
+        });
+    expect(!missing_parent.has_value());
+    if (!missing_parent) {
+      expect(missing_parent.error().type ==
+             pqrs::filesystem::write_file_error::reason::create_temporary_file_failed);
+      expect(missing_parent.error().code ==
+             std::error_code(ENOENT, std::generic_category()));
+    }
+  };
+
   return 0;
 }

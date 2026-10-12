@@ -12,10 +12,12 @@
 #include <cstdint>
 #include <expected>
 #include <fcntl.h>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <pqrs/gsl.hpp>
 #include <string>
+#include <string_view>
 #include <sys/stat.h>
 #include <system_error>
 #include <unistd.h>
@@ -202,4 +204,154 @@ struct read_file_error final {
   }
 }
 
+//
+// write_file_atomically
+//
+
+struct write_file_options final {
+  std::filesystem::path path;
+  std::string_view contents;
+  mode_t permissions = 0644;
+};
+
+struct write_file_error final {
+  enum class reason {
+    create_temporary_file_failed,
+    write_failed,
+    permissions_failed,
+    close_failed,
+    rename_failed,
+  };
+
+  reason type;
+  std::error_code code;
+
+  [[nodiscard]] std::string message() const {
+    switch (type) {
+      case reason::create_temporary_file_failed:
+        return "temporary file creation failed: " + code.message();
+      case reason::write_failed:
+        return "write failed: " + code.message();
+      case reason::permissions_failed:
+        return "permissions update failed: " + code.message();
+      case reason::close_failed:
+        return "close failed: " + code.message();
+      case reason::rename_failed:
+        return "rename failed: " + code.message();
+    }
+    return "unknown write error";
+  }
+};
+
+// Writes to a unique temporary file in the destination directory, then atomically
+// replaces the destination with rename(2). Existing symlinks at the destination
+// are replaced rather than followed.
+inline std::expected<void, write_file_error> write_file_atomically(
+    const write_file_options& options) {
+  struct temporary_file final {
+    int file_descriptor;
+    std::string path;
+
+    ~temporary_file() {
+      if (file_descriptor >= 0) {
+        ::close(file_descriptor);
+      }
+      if (!path.empty()) {
+        ::unlink(path.c_str());
+      }
+    }
+  };
+
+  // mkstemp replaces XXXXXX in this writable string buffer with a unique suffix.
+  // std::string::data returns a writable buffer since C++17.
+  std::string temporary_path = options.path.string() + ".tmp.XXXXXX";
+
+  auto file_descriptor = ::mkostemp(temporary_path.data(),
+                                    O_CLOEXEC);
+  if (file_descriptor < 0) {
+    return std::unexpected(write_file_error{
+        write_file_error::reason::create_temporary_file_failed,
+        {
+            errno,
+            std::generic_category(),
+        },
+    });
+  }
+
+  temporary_file file{
+      .file_descriptor = file_descriptor,
+      .path = temporary_path,
+  };
+
+  size_t offset = 0;
+  while (offset < options.contents.size()) {
+    auto size = ::write(file.file_descriptor,
+                        options.contents.data() + offset,
+                        options.contents.size() - offset);
+    if (size < 0) {
+      auto error = errno;
+      if (error == EINTR) {
+        continue;
+      }
+      return std::unexpected(write_file_error{
+          write_file_error::reason::write_failed,
+          {
+              error,
+              std::generic_category(),
+          },
+      });
+    }
+
+    if (size == 0) {
+      return std::unexpected(write_file_error{
+          write_file_error::reason::write_failed,
+          {
+              EIO,
+              std::generic_category(),
+          },
+      });
+    }
+
+    offset += static_cast<size_t>(size);
+  }
+
+  if (::fchmod(file.file_descriptor,
+               options.permissions) != 0) {
+    return std::unexpected(write_file_error{
+        write_file_error::reason::permissions_failed,
+        {
+            errno,
+            std::generic_category(),
+        },
+    });
+  }
+
+  if (::close(file.file_descriptor) != 0) {
+    file.file_descriptor = -1;
+    return std::unexpected(write_file_error{
+        write_file_error::reason::close_failed,
+        {
+            errno,
+            std::generic_category(),
+        },
+    });
+  }
+
+  file.file_descriptor = -1;
+
+  if (::rename(file.path.c_str(),
+               options.path.c_str()) != 0) {
+    return std::unexpected(write_file_error{
+        write_file_error::reason::rename_failed,
+        {
+            errno,
+            std::generic_category(),
+        },
+    });
+  }
+
+  file.path.clear();
+
+  return {};
+}
 } // namespace pqrs::filesystem
