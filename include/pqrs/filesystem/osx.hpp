@@ -39,6 +39,26 @@ struct volume_properties final {
   volume_mount_flags mount_flags;
 };
 
+namespace detail {
+[[nodiscard]] inline volume_capabilities make_volume_capabilities(const vol_capabilities_attr_t& volume) {
+  auto capability = [&](size_t group, uint32_t flag) -> std::optional<bool> {
+    if (!(volume.valid[group] & flag)) {
+      return std::nullopt;
+    }
+    return (volume.capabilities[group] & flag) != 0;
+  };
+  auto no_permissions = capability(VOL_CAPABILITIES_FORMAT, VOL_CAP_FMT_NO_PERMISSIONS);
+  return volume_capabilities{
+      .supports_permissions = no_permissions ? std::optional(!*no_permissions) : std::nullopt,
+      .supports_symbolic_links = capability(VOL_CAPABILITIES_FORMAT, VOL_CAP_FMT_SYMBOLICLINKS),
+      .supports_hard_links = capability(VOL_CAPABILITIES_FORMAT, VOL_CAP_FMT_HARDLINKS),
+      .case_sensitive = capability(VOL_CAPABILITIES_FORMAT, VOL_CAP_FMT_CASE_SENSITIVE),
+      .case_preserving = capability(VOL_CAPABILITIES_FORMAT, VOL_CAP_FMT_CASE_PRESERVING),
+      .supports_extended_security = capability(VOL_CAPABILITIES_INTERFACES, VOL_CAP_INT_EXTENDED_SECURITY),
+  };
+}
+} // namespace detail
+
 // Follows symlinks. The path must exist. This only queries metadata and never writes.
 [[nodiscard]] inline std::expected<volume_properties, std::error_code> get_volume_properties(const std::filesystem::path& path) {
   struct statfs mount{};
@@ -58,22 +78,8 @@ struct volume_properties final {
     return std::unexpected(std::error_code(errno, std::generic_category()));
   }
 
-  auto capability = [&](size_t group, uint32_t flag) -> std::optional<bool> {
-    if (!(volume.capabilities.valid[group] & flag)) {
-      return std::nullopt;
-    }
-    return (volume.capabilities.capabilities[group] & flag) != 0;
-  };
-  auto no_permissions = capability(VOL_CAPABILITIES_FORMAT, VOL_CAP_FMT_NO_PERMISSIONS);
   return volume_properties{
-      .capabilities = {
-          .supports_permissions = no_permissions ? std::optional(!*no_permissions) : std::nullopt,
-          .supports_symbolic_links = capability(VOL_CAPABILITIES_FORMAT, VOL_CAP_FMT_SYMBOLICLINKS),
-          .supports_hard_links = capability(VOL_CAPABILITIES_FORMAT, VOL_CAP_FMT_HARDLINKS),
-          .case_sensitive = capability(VOL_CAPABILITIES_FORMAT, VOL_CAP_FMT_CASE_SENSITIVE),
-          .case_preserving = capability(VOL_CAPABILITIES_FORMAT, VOL_CAP_FMT_CASE_PRESERVING),
-          .supports_extended_security = capability(VOL_CAPABILITIES_INTERFACES, VOL_CAP_INT_EXTENDED_SECURITY),
-      },
+      .capabilities = detail::make_volume_capabilities(volume.capabilities),
       .mount_flags = {
           .ownership_ignored = (mount.f_flags & MNT_IGNORE_OWNERSHIP) != 0,
           .read_only = (mount.f_flags & MNT_RDONLY) != 0,

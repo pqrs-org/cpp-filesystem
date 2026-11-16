@@ -6,8 +6,20 @@
 
 int main(int argc, char** argv) {
   bool skip = argc == 3 && std::string(argv[2]) == "--skip-exfat";
-  if (argc != 2 && !skip) return 2;
+  bool restricted = argc == 3 && std::string(argv[2]) == "--restricted";
+  if (argc != 2 && !skip && !restricted) return 2;
   const auto root = std::filesystem::path(argv[1]);
+  if (restricted) {
+    for (auto path : {root / "apfs-owners", root / "apfs-owners" / "file"}) {
+      auto result = pqrs::filesystem::osx::get_volume_properties(path);
+      if (!result || !result->mount_flags.read_only || !result->mount_flags.no_exec || !result->mount_flags.no_suid) {
+        std::cerr << "FAIL: read_only/no_exec/no_suid: " << path << '\n';
+        return 1;
+      }
+      std::cout << "PASS: read_only/no_exec/no_suid: " << path << '\n';
+    }
+    return 0;
+  }
   int failures = 0;
   auto check = [&](const auto& path, bool supports, bool ignored) {
     auto result = pqrs::filesystem::osx::get_volume_properties(path);
