@@ -12,6 +12,7 @@
 #include <sys/attr.h>
 #include <sys/mount.h>
 #include <system_error>
+#include <unistd.h>
 
 namespace pqrs::filesystem::osx {
 struct volume_capabilities final {
