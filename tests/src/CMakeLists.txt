@@ -16,7 +16,8 @@ project (test)
 
 add_executable(access_test access_test.cpp)
 if(APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  add_executable(volume_integration_test volume_integration_test.cpp)
+  add_executable(osx_volume_test osx_volume_test.cpp)
+  add_executable(osx_volume_integration_test osx_volume_integration_test.cpp)
 endif()
 
 add_executable(

@@ -7,18 +7,13 @@ if [ "$#" -gt 1 ] || { [ "$#" -eq 1 ] && [ "$1" != --skip-exfat ]; }; then
     exit 2
 fi
 test_directory=$(mktemp -d /private/tmp/karabiner-volume-test.XXXXXX)
-mounted_paths=()
 
 cleanup() {
     local status=$?
-    local failed=0
     trap - EXIT
-    for ((i=${#mounted_paths[@]}-1; i>=0; i--)); do
-        if ! hdiutil detach "${mounted_paths[$i]}"; then
-            failed=1
-        fi
-    done
-    if [ "$failed" -eq 0 ]; then
+    # Inspect actual attachments, not a list updated after attach returns: attach
+    # can fail or be interrupted after creating a device or mounting a volume.
+    if /usr/bin/python3 scripts/osx_volume_cleanup.py "$test_directory"; then
         # Only remove the mktemp directory after all test volumes are unmounted.
         case "$test_directory" in
             /private/tmp/karabiner-volume-test.*) rm -rf -- "$test_directory" ;;
@@ -51,7 +46,6 @@ create_volume() {
     fi
     hdiutil create -size 128m -type SPARSE -layout "$layout" -fs "$filesystem" -volname "$volume_name" "$image"
     hdiutil attach "$image" -mountpoint "$mountpoint" -nobrowse -owners "$owners"
-    mounted_paths+=("$mountpoint")
 }
 
 # Mount options affect only these disposable images; no diskutil ownership
@@ -65,4 +59,4 @@ else
     create_volume exfat ExFAT off
 fi
 
-./build/volume_integration_test "$test_directory" "$@"
+./build/osx_volume_integration_test "$test_directory" "$@"

@@ -40,13 +40,4 @@ int main() {
     std::filesystem::remove(file);
     std::filesystem::remove(directory);
   };
-#if defined(__APPLE__)
-#if TARGET_OS_OSX
-  "volume metadata errors preserve errno"_test = [] {
-    auto result = pqrs::filesystem::osx::get_volume_properties("/dev/null/not-a-directory");
-    expect(!result.has_value());
-    if (!result) expect(result.error() == std::errc::not_a_directory);
-  };
-#endif
-#endif
 }
