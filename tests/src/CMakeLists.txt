@@ -14,6 +14,11 @@ include_directories(SYSTEM ${CMAKE_CURRENT_LIST_DIR}/../../vendor/vendor/include
 
 project (test)
 
+add_executable(access_test access_test.cpp)
+if(APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  add_executable(volume_integration_test volume_integration_test.cpp)
+endif()
+
 add_executable(
   test
   test.cpp
